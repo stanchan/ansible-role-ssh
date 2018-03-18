@@ -1,0 +1,35 @@
+---
+# tasks file for ssh
+- name: Create ssh directory for {{ item.key }}
+  file:
+    path: "{{ item.value.home }}/.ssh"
+    state: directory
+    mode: 0755
+    group: "{{ item.value.group | default(item.key) }}"
+    owner: "{{ item.value.user | default(item.key) }}"
+  when:
+    - ssh_keys
+    - inventory_hostname in item.value.hosts
+  with_dict: "{{ ssh_keys }}"
+
+- name: Create ssh private key for {{ item.key }}
+  copy:
+    dest: "{{ item.value.home }}/.ssh/id_rsa"
+    content: "{{ item.value.privkey }}"
+    mode: 0600
+    group: "{{ item.value.group | default(item.key) }}"
+    owner: "{{ item.value.user | default(item.key) }}"
+  when:
+    - item.value.privkey is defined
+    - inventory_hostname in item.value.hosts
+  with_dict: "{{ ssh_keys }}"
+
+- name: Add ssh public key to authorized_keys for {{ item.key }}
+  authorized_key:
+    user: "{{ item.value.user | default(item.key) }}"
+    state: present
+    key: "{{ item.value.pubkey }}"
+  when:
+    - item.value.pubkey is defined
+    - inventory_hostname in item.value.hosts
+  with_dict: "{{ ssh_keys }}"
